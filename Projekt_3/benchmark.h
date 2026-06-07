@@ -19,18 +19,22 @@ const std::vector<int> BENCH_SEEDS = {42, 137, 999, 2025, 31415};
 using Clock  = std::chrono::high_resolution_clock;
 using Micros = std::chrono::microseconds;
 
-// Mierzy czas wykonania funkcji fn w mikrosekundach
-inline long long measureUs(auto fn) {
+// Mierzy czas wykonania funkcji fn w nanosekundach
+template<typename Fn>
+inline long long measureUs(Fn fn) {
     auto t0 = Clock::now();
     fn();
-    return std::chrono::duration_cast<Micros>(Clock::now() - t0).count();
+    return std::chrono::duration_cast<Nanos>((Clock::now() - t0)).count();
 }
 
 // Generuje n unikalnych kluczy w losowej kolejności (shuffle zakresu [0, n))
 inline std::vector<int> generateKeys(int n, int seed) {
     std::vector<int> keys(n);
     std::iota(keys.begin(), keys.end(), 0);
-    std::shuffle(keys.begin(), keys.end(), std::mt19937(seed));
+    std::uniform_int_distribution<int> dist(0, n * 100); 
+    for (int i = 0; i < n; ++i) {
+        keys[i] = dist(gen);
+    }
     return keys;
 }
 
@@ -51,9 +55,7 @@ void runBenchmark(const std::string& name) {
 
         for (int seed : BENCH_SEEDS) {
             auto keys = generateKeys(n, seed);
-
-            // Pojemność 2×n → współczynnik wypełnienia ~0.5, mało kolizji
-            HT ht(n * 2);
+            HT ht(n);
 
             totalInsert += (measureUs([&]() {
                 for (int k : keys) ht.insert(k, k * 7);
